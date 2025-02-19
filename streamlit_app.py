@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
 def load_data():
@@ -22,30 +23,36 @@ def load_data():
 
 
 def main():
+    st.set_page_config(layout="wide")
     st.title("Contract Savings Analysis")
 
     # Load Data
     df = load_data()
 
-    # Display Table
-    st.subheader("Contract Value vs Actual Savings")
-    st.dataframe(df)
+    # Layout Columns
+    col1, col2 = st.columns([3, 1])
+
+    with col1:
+        st.subheader("Contract Value vs Actual Savings")
+        st.dataframe(df.style.format({"Value": "${:,.2f}", "Saved": "${:,.2f}"}))
+
+    with col2:
+        # Calculate Total Savings
+        total_savings = df["Saved"].sum()
+        total_contract_value = df["Value"].sum()
+        st.subheader("Summary Metrics")
+        st.metric(label="Total Contract Value", value=f"${total_contract_value:,.2f}")
+        st.metric(label="Total Savings", value=f"${total_savings:,.2f}",
+                  delta=f"{(total_savings / total_contract_value) * 100:.2f}% saved")
 
     # Aggregate Data by Agency
     savings_summary = df.groupby("Agency")[['Value', 'Saved']].sum().reset_index()
 
-    # Calculate Total Savings
-    total_savings = savings_summary["Saved"].sum()
-
-    # Display Total Savings
-    st.subheader("Total Amount Saved")
-    st.write(f"**Total Savings: ${total_savings:,.2f}**")
-
-    # Plot Bar Chart
+    # Plot Bar Chart with Seaborn
     st.subheader("Total Contract Value vs Savings by Agency")
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.bar(savings_summary["Agency"], savings_summary["Value"], label="Contract Value", alpha=0.7)
-    ax.bar(savings_summary["Agency"], savings_summary["Saved"], label="Saved", alpha=0.7)
+    fig, ax = plt.subplots(figsize=(12, 6))
+    sns.barplot(x="Agency", y="Value", data=savings_summary, label="Contract Value", color="blue", alpha=0.7)
+    sns.barplot(x="Agency", y="Saved", data=savings_summary, label="Saved", color="green", alpha=0.7)
     ax.set_xlabel("Agency")
     ax.set_ylabel("Amount ($)")
     ax.set_title("Contract Value vs Savings by Agency")
@@ -53,6 +60,12 @@ def main():
     plt.xticks(rotation=90)
 
     st.pyplot(fig)
+
+    # Interactive Agency Filter
+    st.subheader("Filter by Agency")
+    agency_selection = st.selectbox("Select an Agency", df["Agency"].unique())
+    filtered_df = df[df["Agency"] == agency_selection]
+    st.dataframe(filtered_df.style.format({"Value": "${:,.2f}", "Saved": "${:,.2f}"}))
 
 
 if __name__ == "__main__":
